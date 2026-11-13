@@ -5,7 +5,7 @@ export default async (request) => {
     });
   }
 
-  const apiKey = Netlify.env.get("OPENAI_API_KEY");
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
     return new Response(JSON.stringify({
       error: "A IA ainda não foi configurada. Adicione OPENAI_API_KEY nas variáveis de ambiente do Netlify."
