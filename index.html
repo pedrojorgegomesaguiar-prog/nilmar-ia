@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NILMAR AI — Burrice Extrema</title>
+<style>
+:root{color-scheme:dark;--bg:#100d19;--panel:#1b1528;--panel2:#241b35;--purple:#a78bfa;--pink:#f472b6;--text:#f6f2ff;--muted:#b9aecb}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 50% -20%,#49316c 0,transparent 42%),var(--bg);color:var(--text);font:16px system-ui,-apple-system,Segoe UI,sans-serif;display:flex;justify-content:center;padding:22px}
+.app{width:min(850px,100%);display:flex;flex-direction:column;gap:16px}
+header,.profile,.chatbox{background:rgba(27,21,40,.94);border:1px solid #49375e;border-radius:22px;box-shadow:0 15px 50px #0005}
+header{padding:22px;text-align:center}h1{margin:0;font-size:clamp(27px,6vw,42px);letter-spacing:2px}h1 span{color:var(--purple)}.sub{color:var(--muted);margin:5px 0 0}
+.profile{padding:15px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{background:var(--panel2);border-radius:14px;padding:12px;text-align:center}.stat b{display:block;font-size:19px;color:var(--purple)}.stat small{color:var(--muted)}
+.chatbox{padding:16px;display:flex;flex-direction:column;min-height:480px}.chathead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:2px 2px 12px;border-bottom:1px solid #49375e}.status{color:#86efac;font-size:13px}.messages{flex:1;display:flex;flex-direction:column;gap:12px;padding:16px 2px;overflow:auto;max-height:55vh;min-height:300px}.msg{max-width:88%;padding:12px 15px;border-radius:17px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}.bot{align-self:flex-start;background:var(--panel2);border:1px solid #4b3b61}.user{align-self:flex-end;background:linear-gradient(135deg,#7651bd,#a34d91)}.typing{color:var(--muted);font-style:italic}.composer{display:flex;gap:9px}.composer input{flex:1;min-width:0;background:#100d19;border:1px solid #59476e;border-radius:14px;padding:14px;color:white;font-size:16px;outline:none}.composer input:focus{border-color:var(--purple)}button{border:0;border-radius:14px;padding:0 18px;background:var(--purple);color:#160e25;font-weight:800;font-size:15px;cursor:pointer}button:disabled{opacity:.55;cursor:wait}.clear{background:transparent;border:1px solid #59476e;color:var(--muted);padding:8px 12px;font-size:12px}.hint{text-align:center;color:var(--muted);font-size:12px;margin:10px 0 0}
+@media(max-width:520px){body{padding:10px}.profile{gap:6px;padding:9px}.stat{padding:9px 4px}.stat b{font-size:16px}.stat small{font-size:11px}.chatbox{padding:11px;min-height:65vh}.messages{min-height:35vh;max-height:55vh}.composer button{padding:0 13px}}
+</style>
+</head>
+<body>
+<main class="app">
+<header><h1>🤖 NILMAR <span>AI</span></h1><p class="sub">Burrice extrema. Inteligência artificial (infelizmente).</p></header>
+<section class="profile" aria-label="Perfil do Nilmar">
+<div class="stat"><b>-999</b><small>QI estimado</small></div>
+<div class="stat"><b>100%</b><small>Burrice certificada</small></div>
+<div class="stat"><b>❤️ Nikita</b><small>Assunto favorito</small></div>
+</section>
+<section class="chatbox">
+<div class="chathead"><div><strong>Conversa com Nilmar</strong><div class="status">● Online e confuso</div></div><button class="clear" id="clear">Limpar conversa</button></div>
+<div class="messages" id="messages" aria-live="polite"><div class="msg bot">E AÍÍÍ! Sou o Nilmar AI 😂 Pode perguntar qualquer coisa. Vou tentar responder direito... mas não prometo inteligência. ❤️</div></div>
+<form class="composer" id="form"><input id="prompt" autocomplete="off" placeholder="Pergunte qualquer coisa ao Nilmar..." maxlength="2000" required><button id="send" type="submit">Enviar</button></form>
+<p class="hint">As mensagens desta conversa ficam apenas nesta sessão.</p>
+</section>
+</main>
+<script>
+const messagesEl=document.querySelector('#messages'),form=document.querySelector('#form'),input=document.querySelector('#prompt'),send=document.querySelector('#send'),clear=document.querySelector('#clear');
+let history=[];
+function add(text,who){const el=document.createElement('div');el.className='msg '+who;el.textContent=text;messagesEl.appendChild(el);messagesEl.scrollTop=messagesEl.scrollHeight;return el;}
+form.addEventListener('submit',async e=>{
+ e.preventDefault();const message=input.value.trim();if(!message)return;
+ add(message,'user');history.push({role:'user',content:message});input.value='';send.disabled=true;
+ const typing=add('Nilmar está usando 0,0003 neurônios...','bot typing');
+ try{
+  const res=await fetch('/.netlify/functions/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history.slice(-20)})});
+  const data=await res.json();if(!res.ok)throw new Error(data.error||'Não consegui falar com o cérebro artificial.');
+  const answer=data.reply||'Deu tela azul no meu único neurônio.';
+  typing.remove();add(answer,'bot');history.push({role:'assistant',content:answer});history=history.slice(-20);
+ }catch(err){typing.remove();add('Ih, deu ruim: '+err.message,'bot');history.pop();}
+ finally{send.disabled=false;input.focus();}
+});
+clear.addEventListener('click',()=>{history=[];messagesEl.innerHTML='';add('Conversa apagada! Minha memória voltou a ser uma batata. 😂','bot');});
+</script>
+</body></html>
