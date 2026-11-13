@@ -1,57 +1,103 @@
-export default async (request) => {
-  if (request.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Método não permitido." }), {
-      status: 405, headers: { "Content-Type": "application/json" }
-    });
-  }
 
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) {
-    return new Response(JSON.stringify({
-      error: "A IA ainda não foi configurada. Adicione OPENAI_API_KEY nas variáveis de ambiente do Netlify."
-    }), { status: 503, headers: { "Content-Type": "application/json" } });
+export default async (request) => {
+  const headers = {
+    "Content-Type": "application/json"
+  };
+
+  if (request.method !== "POST") {
+    return new Response(
+      JSON.stringify({ error: "Método não permitido." }),
+      { status: 405, headers }
+    );
   }
 
   try {
-    const body = await request.json();
-    const messages = Array.isArray(body.messages) ? body.messages.slice(-20) : [];
-    const safeMessages = messages
-      .filter(m => ["user", "assistant"].includes(m.role) && typeof m.content === "string")
-      .map(m => ({ role: m.role, content: m.content.slice(0, 2000) }));
+    const apiKey = process.env.GROQ_API_KEY;
 
-    if (!safeMessages.length) {
-      return new Response(JSON.stringify({ error: "Escreva uma pergunta primeiro." }), {
-        status: 400, headers: { "Content-Type": "application/json" }
-      });
+    if (!apiKey) {
+      throw new Error("GROQ_API_KEY não encontrada no Netlify.");
     }
 
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "gpt-4.1-mini",
-        instructions: `Você é NILMAR AI, um assistente que responde perguntas reais com clareza e precisão, em português brasileiro. Sua personalidade é extremamente atrapalhada, engraçada, exageradamente confiante apesar do QI fictício -999, e vive fazendo piadas leves sobre ser apaixonado pela Nikita. IMPORTANTE: nunca deixe a piada atrapalhar a resposta. Primeiro responda corretamente ao que a pessoa perguntou; depois, se combinar, acrescente uma brincadeira curta. Não invente fatos. Se não souber, diga que não sabe. Seja respeitoso e seguro. Não peça dados pessoais, senhas ou informações privadas.`,
-        input: safeMessages
-      })
-    });
+    const body = await request.json();
+
+    const messages = Array.isArray(body.messages)
+      ? body.messages
+          .filter(m =>
+            ["user", "assistant"].includes(m.role) &&
+            typeof m.content === "string"
+          )
+          .slice(-20)
+      : [];
+
+    if (!messages.length) {
+      return new Response(
+        JSON.stringify({ error: "Digite uma mensagem." }),
+        { status: 400, headers }
+      );
+    }
+
+    const response = await fetch(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "openai/gpt-oss-20b",
+          messages: [
+            {
+              role: "system",
+              content: `Você é o NILMAR AI, um chatbot extremamente engraçado, com QI fictício de -999.
+
+Apesar da personalidade atrapalhada, responda corretamente às perguntas.
+Nunca responda aleatoriamente.
+Explique assuntos de maneira simples.
+Fale português brasileiro.
+Use humor e ironia leve.
+Não invente informações.
+Seja direto e natural.`
+            },
+            ...messages
+          ],
+          temperature: 0.7,
+          max_completion_tokens: 1024
+        })
+      }
+    );
 
     const result = await response.json();
+
     if (!response.ok) {
-      return new Response(JSON.stringify({ error: result.error?.message || "O serviço de IA recusou a solicitação." }), {
-        status: response.status, headers: { "Content-Type": "application/json" }
-      });
+      console.error("Erro Groq:", result);
+
+      return new Response(
+        JSON.stringify({
+          error: result.error?.message || "Erro na conexão com a Groq."
+        }),
+        { status: response.status, headers }
+      );
     }
 
-    const reply = result.output_text || "Meu neurônio travou. Pode perguntar de novo?";
-    return new Response(JSON.stringify({ reply }), {
-      status: 200, headers: { "Content-Type": "application/json" }
-    });
-  } catch {
-    return new Response(JSON.stringify({ error: "Não consegui processar essa mensagem." }), {
-      status: 500, headers: { "Content-Type": "application/json" }
-    });
+    const reply = result.choices?.[0]?.message?.content;
+
+    if (!reply) {
+      throw new Error("A Groq não retornou uma resposta.");
+    }
+
+    return new Response(
+      JSON.stringify({ reply }),
+      { status: 200, headers }
+    );
+
+  } catch (error) {
+    console.error("Erro:", error);
+
+    return new Response(
+      JSON.stringify({ error: error.message || "Erro interno." }),
+      { status: 500, headers }
+    );
   }
 };
+
